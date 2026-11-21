@@ -1,6 +1,7 @@
 {
   "name": "sin-editor",
   "version": "0.1.1",
+  "license": "MIT",
   "description": "sin(editor)",
   "main": "main.js",
   "scripts": {
