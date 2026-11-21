@@ -37,16 +37,8 @@ A code editor as a function of you. Period: 2π. Amplitude: yes.
 ### Installation
 
 ```bash
-npm install
+npm install sin-editor
 ```
-
-### Running
-
-```bash
-npm start
-```
-
-This launches the Electron application. The first run will install dependencies including `@lydell/node-pty` for terminal support.
 
 ## Keyboard Shortcuts
 
