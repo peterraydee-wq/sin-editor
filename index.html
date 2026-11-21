@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sin(editor)</title>
+<link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css">
+<style>
+:root{--sb:#283035;--sbd:#323c42;--d:#232a2e;--b0:#2d353b;--b1:#343f44;--b2:#3d484d;--b3:#475258;--fg:#d3c6aa;--mute:#7a8478;--g:#a7c080;--a:#83c092;--y:#dbbc7f;--o:#e69875}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+html,body{height:100%;background:var(--d);color:var(--fg);font:13px 'Loomglyph','JetBrains Mono','Cascadia Code',Consolas,monospace;overflow:hidden}
+#app{display:grid;grid-template-columns:44px var(--sbw,250px) 1fr;grid-template-rows:38px 1fr 24px;height:100%}
+#title{grid-column:1/-1;display:grid;grid-template-columns:1fr minmax(220px,420px) 1fr;align-items:center;-webkit-app-region:drag;
+  padding-left:max(14px,env(titlebar-area-x,0px));padding-right:calc(100vw - env(titlebar-area-x,0px) - env(titlebar-area-width,100vw))}
+.mac #title{padding-left:84px}
+#brand{color:var(--g);text-shadow:0 0 6px color-mix(in srgb,var(--g) 33%,transparent);white-space:nowrap}
+#omni{-webkit-app-region:no-drag;display:flex;justify-content:space-between;gap:12px;height:26px;padding:0 10px;align-items:center;background:var(--sb);border:1px solid var(--b1);border-radius:9px;color:var(--mute);font:inherit;cursor:pointer;overflow:hidden}
+#omni:hover{border-color:var(--b3);color:var(--fg)}
+#omni kbd{font:inherit;opacity:.6}
+#ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:16px;padding:0 3px;border-radius:4px;font-size:9px;font-weight:700;margin-right:7px;flex:none}
+.fi{width:16px;height:16px;margin-right:6px;flex:none}
+.ch{width:14px;flex:none;color:var(--mute);font-size:10px}
+.nm{overflow:hidden;text-overflow:ellipsis}
+#lang{cursor:pointer;border-radius:5px;padding:0 6px;display:inline-flex;align-items:center}
+#lang:hover{background:var(--b1);color:var(--g)}
+#pal li span{display:inline-flex;align-items:center}
+#grip{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:5}
+#grip:hover{background:color-mix(in srgb,var(--g) 20%,transparent)}
+#hits .row{display:block}
+#mdp{flex:1;min-width:0;border:0;border-left:1px solid var(--b3)}
+*::-webkit-scrollbar{width:12px;height:12px}
+*::-webkit-scrollbar-track,*::-webkit-scrollbar-corner{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--b3);border:3px solid transparent;background-clip:content-box;border-radius:8px}
+*::-webkit-scrollbar-thumb:hover{background:var(--mute);background-clip:content-box}
+#side h4 .ib{display:flex;gap:10px}
+.row .nm{flex:1;min-width:0}
+.row .dots{margin-left:auto;opacity:0;padding:0 5px;border-radius:5px;flex:none}
+.row:hover .dots{opacity:.7}.row .dots:hover{opacity:1;background:var(--b3);color:var(--g)}
+#ctx{position:fixed;z-index:20;background:var(--b1);border:1px solid var(--b3);border-radius:10px;padding:4px;min-width:160px;box-shadow:0 8px 24px #0005}
+#ctx div{padding:6px 12px;border-radius:6px;cursor:pointer}#ctx div:hover{background:var(--b3);color:var(--g)}
+#set{position:fixed;inset:0;z-index:9;display:flex;justify-content:center;align-items:center;background:#0006}
+#set>div{width:min(560px,92vw);max-height:82vh;overflow:auto;background:var(--b1);border:1px solid var(--b3);border-radius:12px;padding:14px 20px}
+#set h3{font-weight:normal;color:var(--g);margin-bottom:6px}
+.sr{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:7px 0;border-bottom:1px solid var(--b2)}
+.sr input,.sr select,#set button{background:var(--b0);color:var(--fg);border:1px solid var(--b3);border-radius:7px;padding:4px 8px;font:inherit;outline:0}
+.sr input:not([type=checkbox]),.sr select{width:210px}.sr input[type=checkbox]{accent-color:var(--g);width:16px;height:16px}
+#set button{margin-top:12px;cursor:pointer}#set button:hover{color:var(--g);border-color:var(--g)}
+#rail #r-set{margin-top:auto}
+.sr.fr{flex-direction:column;align-items:stretch;gap:6px}.sr.fr input{width:100%}
+.fs{display:flex;flex-wrap:wrap;gap:4px}.fs span{padding:2px 8px;border-radius:6px;background:var(--b2);cursor:pointer;font-size:12px}
+.fs span:hover{background:var(--b3);color:var(--g)}.sr.fr small{color:var(--mute);min-height:14px}
+.btn{cursor:pointer;border-radius:5px;padding:0 6px;display:inline-flex;align-items:center}.btn:hover{background:var(--b1);color:var(--g)}
+.tab{align-items:center;height:26px;line-height:16px}
+.tab span{display:inline-flex;align-items:center}.tab .fi{margin-right:7px}
+.tab i{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;line-height:1;border-radius:4px}
+.tab i:hover{background:var(--b3)}
+.fi{vertical-align:middle}
+#main.tfull #stage,#main.tfull #tabs,#main.tfull #tgrip{display:none}
+#main.tfull #term{height:auto;flex:1}
+#term{position:relative;height:var(--th,260px);display:flex;flex-direction:column;background:var(--d);border-top:1px solid var(--b1)}
+#tgrip{position:absolute;top:-3px;left:0;right:0;height:6px;cursor:row-resize;z-index:5}
+#tgrip:hover{background:color-mix(in srgb,var(--g) 20%,transparent)}
+#thead{display:flex;align-items:center;gap:2px;padding:4px 8px 0}
+#ttabs{display:flex;gap:2px;flex:1;overflow-x:auto}
+.tt{display:flex;align-items:center;gap:8px;padding:3px 10px;border-radius:7px;color:var(--mute);cursor:pointer;white-space:nowrap}
+.tt:hover{background:var(--b1)}.tt.on{background:var(--b2);color:var(--fg)}
+.tt i{font-style:normal;opacity:.6}.tt i:hover{opacity:1;color:var(--o)}
+#thead button{border:0;background:none;color:var(--mute);font:inherit;font-size:16px;cursor:pointer;border-radius:6px;width:24px;height:24px}
+#thead button:hover{background:var(--b1);color:var(--g)}
+#tbody{flex:1;min-height:0;position:relative}
+#tbody>div{position:absolute;inset:4px 12px}
+.xterm-viewport{background:transparent!important}
+#app.nosb{grid-template-columns:44px 0 1fr}#app.nosb #side{visibility:hidden;margin:0;border:0}
+#rail{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0}
+#rail button{width:32px;height:32px;border:0;border-radius:9px;background:none;color:var(--mute);font:16px inherit;cursor:pointer}
+#rail button:hover,#rail button.on{background:var(--b1);color:var(--g)}
+#side{position:relative;min-width:0;margin:2px 8px 0 0;background:var(--sb);border:1px solid var(--sbd);border-radius:12px;overflow:hidden}#sidein{height:100%;overflow:auto;padding:8px 4px}
+#side h4{font-weight:normal;color:var(--mute);padding:4px 10px 8px;display:flex;justify-content:space-between}
+#side h4 a{color:var(--a);cursor:pointer}
+.row{display:flex;align-items:center;padding:3px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row:hover{background:var(--b1)}
+.empty{color:var(--mute);padding:8px 10px;line-height:1.6}
+#main{background:var(--b0);border-radius:12px;margin:2px 8px 0 0;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#tabs{display:flex;gap:2px;padding:6px 6px 0;min-height:36px;overflow-x:auto}
+.tab{padding:5px 10px;border-radius:8px;color:var(--mute);cursor:pointer;display:flex;gap:10px;white-space:nowrap}
+.tab:hover{background:var(--b1)}
+.tab.on{background:var(--b2);color:var(--fg)}
+.tab i{font-style:normal;opacity:.6}
+.tab i:hover{opacity:1;color:var(--o)}
+.tab i.dirty{color:var(--y);opacity:1}
+#stage{flex:1;min-height:0;position:relative}
+#editors,#welcome{position:absolute;inset:0}
+#editors{display:flex}#editors>div{flex:1;min-width:0}#editor2{border-left:1px solid var(--b3)}
+#srch input{width:100%;padding:7px 10px;margin-bottom:6px;background:var(--b1);border:0;border-radius:8px;color:var(--fg);font:inherit;outline:0}
+#hits small{display:block;color:var(--mute)}
+#welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;overflow:auto;padding:24px}
+#art{color:var(--g);text-shadow:0 0 6px color-mix(in srgb,var(--g) 40%,transparent);font-size:clamp(4px,.62vw,8px);line-height:1.1;white-space:pre;cursor:default;user-select:none}
+#tag{color:var(--mute)}
+#acts{display:flex;flex-direction:column;gap:2px;width:340px}
+.act{display:flex;justify-content:space-between;padding:7px 12px;border-radius:8px;cursor:pointer}
+.act:hover{background:var(--b2);color:var(--g)}
+.act kbd,#pal kbd{color:var(--mute);font:inherit}
+#recent{width:340px;color:var(--mute)}
+#recent .row{color:var(--a)}
+#status{grid-column:1/-1;display:flex;justify-content:space-between;padding:0 14px;align-items:center;color:var(--mute)}
+#status span+span{margin-left:16px}
+#pal{position:fixed;inset:0;z-index:9;display:flex;justify-content:center;align-items:flex-start;padding-top:12vh;background:#0006}
+#pal>div{width:min(560px,90vw);background:var(--b1);border:1px solid var(--b3);border-radius:12px;overflow:hidden}
+#pal input{width:100%;padding:12px 14px;background:none;border:0;border-bottom:1px solid var(--b3);color:var(--fg);font:inherit;outline:0}
+#pal ul{list-style:none;padding:4px;max-height:52vh;overflow:auto}
+#pal li{display:flex;justify-content:space-between;padding:6px 10px;border-radius:7px;cursor:pointer}
+#pal li.on{background:var(--b3);color:var(--g)}
+#toast{position:fixed;right:18px;bottom:36px;background:var(--b1);border:1px solid var(--g);color:var(--g);border-radius:10px;padding:10px 14px;white-space:pre;z-index:10}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="title">
+    <span id="brand">∿ sin(editor)</span>
+    <button id="omni"><span id="ttl">sin(editor)</span><kbd>ctrl+p</kbd></button>
+    <span></span>
+  </header>
+  <nav id="rail">
+    <button id="r-files" class="on" title="files (ctrl+b)">▤</button>
+    <button id="r-pal" title="command palette (ctrl+shift+p)">⌘</button>
+    <button id="r-find" title="search project (ctrl+shift+f)">⌕</button>
+    <button id="r-term" title="terminal (ctrl+`)">❯</button>
+    <button id="r-snd" title="sound">♪</button>
+    <button id="r-home" title="welcome">⌂</button>
+    <button id="r-set" title="settings (ctrl+,)">⚙</button>
+  </nav>
+  <aside id="side"><div id="sidein">
+    <h4><span id="root">explorer</span><span class="ib"><a id="s-nf" title="new file">+</a><a id="s-nd" title="new folder">▣</a><a id="s-rf" title="refresh">↻</a><a id="s-open" title="open folder">open</a></span></h4>
+    <div id="tree"><div class="empty">no folder open.<br>ctrl+shift+o to open one.</div></div>
+    <div id="srch" hidden><input id="q" placeholder="search project… (enter)" spellcheck="false"><div id="hits"></div></div>
+  </div><div id="grip"></div></aside>
+  <section id="main">
+    <div id="tabs"></div>
+    <div id="stage">
+      <div id="welcome">
+<pre id="art">__/\\/\\_______________________________________/\\\________________________/\\\___________________________________________________/\\\______/\\/\\_        
+ _\/\\/\\_____________________________________/\\\/________________________\/\\\__________________________________________________\///\\\___\/\\/\\_       
+  _\//\//________________/\\\_________________/\\\__________________________\/\\\___/\\\_____/\\\____________________________________\//\\\__\//\//__      
+   __________/\\\\\\\\\\_\///___/\\/\\\\\\____/\\\_________/\\\\\\\\_________\/\\\__\///___/\\\\\\\\\\\_____/\\\\\_____/\\/\\\\\\\_____\//\\\_________     
+    _________\/\\\//////___/\\\_\/\\\////\\\__\/\\\_______/\\\/////\\\___/\\\\\\\\\___/\\\_\////\\\////____/\\\///\\\__\/\\\/////\\\_____\/\\\_________    
+     _________\/\\\\\\\\\\_\/\\\_\/\\\__\//\\\_\//\\\_____/\\\\\\\\\\\___/\\\////\\\__\/\\\____\/\\\_______/\\\__\//\\\_\/\\\___\///______/\\\__________   
+      _________\////////\\\_\/\\\_\/\\\___\/\\\__\//\\\___\//\\///////___\/\\\__\/\\\__\/\\\____\/\\\_/\\__\//\\\__/\\\__\/\\\____________/\\\___________  
+       __________/\\\\\\\\\\_\/\\\_\/\\\___\/\\\___\///\\\__\//\\\\\\\\\\_\//\\\\\\\/\\_\/\\\____\//\\\\\____\///\\\\\/___\/\\\__________/\\\/____________ 
+        _________\//////////__\///__\///____\///______\///____\//////////___\///////\//__\///______\/////_______\/////_____\///__________\///______________</pre>
+        <div id="tag">a code editor as a function of you. period: 2π. amplitude: yes.</div>
+        <div id="acts"></div>
+        <div id="recent"></div>
+      </div>
+      <div id="editors" hidden><div id="editor"></div><div id="editor2" hidden></div><iframe id="mdp" sandbox="allow-same-origin" hidden srcdoc="<!doctype html><style id='st'></style><body></body>"></iframe></div>
+    </div>
+    <div id="term" hidden>
+      <div id="tgrip"></div>
+      <div id="thead"><div id="ttabs"></div><button id="t-fs" title="fullscreen terminal (double-click the bar)">⤢</button><button id="t-new" title="new terminal (ctrl+shift+`)">+</button><button id="t-x" title="hide (ctrl+`)">×</button></div>
+      <div id="tbody"></div>
+    </div>
+  </section>
+  <footer id="status">
+    <div><span>∿ sin(editor)</span><span id="snd">♪ on</span><span id="st-term" class="btn" title="terminal (ctrl+`)">❯ terminal</span></div>
+    <div><span id="pos">ln 1, col 1</span><span id="enc" class="btn" title="encoding"></span><span id="eol" class="btn" title="line endings"></span><span id="mdbtn" class="btn" title="markdown preview (ctrl+shift+m)" hidden>⊞ preview</span><span id="lang"></span></div>
+  </footer>
+</div>
+<div id="pal" hidden><div><input spellcheck="false"><ul></ul></div></div>
+<div id="toast" hidden></div>
+<div id="set" hidden></div>
+<div id="ctx" hidden></div>
+
+<script src="zed-icons.js"></script>
+<script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const base = (p) => p.split(/[\\/]/).pop();
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+// ---------- monaco bootstrap (file:// safe workers) ----------
+const root = new URL('node_modules/monaco-editor/min', location.href).href;
+self.MonacoEnvironment = {
+  getWorkerUrl: () => 'data:text/javascript;charset=utf-8,' + encodeURIComponent(
+    `self.MonacoEnvironment={baseUrl:'${root}/'};importScripts('${root}/vs/base/worker/workerMain.js');`),
+};
+const xm = new URL('node_modules/@xterm', location.href).href;
+require.config({ paths: { vs: root + '/vs', xterm: xm + '/xterm/lib/xterm', xtermfit: xm + '/addon-fit/lib/addon-fit' } });
+let XTerm, XTermFit; // optional: terminal degrades gracefully if npm install is missing them
+require(['xterm', 'xtermfit'], (x, f) => { XTerm = x; XTermFit = f; }, () => {});
+require(['vs/editor/editor.main'], boot);
+
+// ---------- state ----------
+let editor, ed2 = null, cur, eopts, folder = null, tabs = [], active = null, untitled = 0, sound = true, ac;
+const extMap = {}, nameMap = {};
+// languages monaco lacks -> closest built-in highlighter
+const extra = { toml: 'ini', env: 'ini', zig: 'rust', nix: 'shell', cmake: 'shell', orb: 'ruby', jsonc: 'json',
+  vue: 'html', svelte: 'html', gd: 'python', lock: 'json', mdx: 'markdown', gradle: 'java' };
+const langFor = (p) => {
+  const n = base(p), e = n.includes('.') ? n.split('.').pop().toLowerCase() : '';
+  return nameMap[n] || extMap['.' + e] || extra[e] || 'plaintext';
+};
+
+// ---------- audio (it's a sine editor, obviously) ----------
+function tone(f, d = .12, t = 0) {
+  if (!sound) return;
+  ac ??= new AudioContext();
+  const o = ac.createOscillator(), g = ac.createGain(), s = ac.currentTime + t;
+  o.frequency.value = f;
+  g.gain.setValueAtTime(.0001, s);
+  g.gain.exponentialRampToValueAtTime(.07, s + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, s + d);
+  o.connect(g).connect(ac.destination);
+  o.start(s); o.stop(s + d + .02);
+}
+const chime = (a) => a.forEach((f, i) => tone(f, .25, i * .09));
+
+// ---------- icons (no deps: tinted badges + inline svg) ----------
+const BD = { javascript: ['JS', '#dbbc7f'], typescript: ['TS', '#7fbbb3'], python: ['PY', '#a7c080'], rust: ['RS', '#e69875'],
+  go: ['GO', '#83c092'], c: ['C', '#7fbbb3'], cpp: ['C+', '#7fbbb3'], csharp: ['C#', '#d699b9'], java: ['JV', '#e69875'],
+  html: ['<>', '#e69875'], css: ['#', '#7fbbb3'], scss: ['#', '#d699b9'], less: ['#', '#7fbbb3'], json: ['{}', '#dbbc7f'],
+  markdown: ['MD', '#859289'], yaml: ['YM', '#e67e80'], shell: ['$_', '#a7c080'], powershell: ['PS', '#7fbbb3'],
+  ruby: ['RB', '#e67e80'], php: ['PH', '#d699b9'], lua: ['LU', '#7fbbb3'], sql: ['DB', '#dbbc7f'], xml: ['</', '#e69875'],
+  ini: ['::', '#859289'], dockerfile: ['DK', '#7fbbb3'], plaintext: ['TX', '#7a8478'], kotlin: ['KT', '#d699b9'],
+  swift: ['SW', '#e69875'], python3: ['PY', '#a7c080'] };
+const badge = (id) => {
+  const [t, c] = BD[id] || [id.slice(0, 2).toUpperCase(), '#859289'];
+  return `<b class="bd" style="color:${c};background:${c}22">${esc(t)}</b>`;
+};
+const FOLDER = (o) => `<svg class="fi" viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3.2l1.3 1.5h6.5a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="${o ? '#a7c080' : '#83c09288'}"/></svg>`;
+const rowHtml = (f, open) => `<span class="ch">${f.dir ? (open ? '▾' : '▸') : ''}</span>${fileIcon(f.name, f.dir, open)}<span class="nm">${esc(f.name)}</span><span class="dots" title="more">⋯</span>`;
+const fileIcon = (name, dir, open) => {
+  const Z = window.ZI;
+  if (!Z) return dir ? FOLDER(open) : badge(langFor(name));
+  if (dir) return Z.svg[open ? 'folderOpen' : 'folder'];
+  const n = name.toLowerCase();
+  let k = Z.names[n] || (Z.prefix.find(([p]) => n.startsWith(p)) || [])[1];
+  const p = n.split('.');
+  for (let i = 1; i < p.length && !k; i++) k = Z.ext[p.slice(i).join('.')];
+  return Z.svg[k || Z.lang[langFor(name)] || 'file'];
+};
+const langIcon = (id) => (window.ZI?.lang[id] ? window.ZI.svg[window.ZI.lang[id]] : badge(id));
+const langName = (id) => monaco.languages.getLanguages().find((l) => l.id === id)?.aliases?.[0] || id;
+
+// ---------- ui helpers ----------
+let tt;
+function toast(msg, ms = 3200) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), ms);
+}
+const fox = (m) => { toast(` /\\_/\\\n( o.o )  ${m}\n > ^ <`, 4500); for (let i = 0; i < 16; i++) tone(220 * 2 ** (i / 4), .12, i * .05); };
+
+function render() {
+  $('#tabs').replaceChildren(...tabs.map((t) => {
+    const d = document.createElement('div'), n = document.createElement('span'), x = document.createElement('i');
+    d.className = 'tab' + (t === active ? ' on' : '');
+    n.innerHTML = fileIcon(t.name) + esc(t.name);
+    x.textContent = t.dirty ? '●' : '×'; x.className = t.dirty ? 'dirty' : '';
+    d.append(n, x);
+    d.onclick = () => show(t);
+    d.onauxclick = () => close(t);
+    x.onclick = (e) => { e.stopPropagation(); close(t); };
+    return d;
+  }));
+  $('#welcome').hidden = !!active;
+  $('#enc').textContent = active ? ENC[active.enc || 'utf8'] : '';
+  $('#mdbtn').hidden = !(active && active.model.getLanguageId() === 'markdown'); $('#mdp').hidden = !pvVisible(); if (pvOn) pvSoon();
+  $('#eol').textContent = active ? (active.model.getEOL() === '\r\n' ? 'CRLF' : 'LF') : '';
+  $('#editors').hidden = !active;
+  $('#lang').innerHTML = active ? langIcon(active.model.getLanguageId()) + esc(langName(active.model.getLanguageId())) : '';
+  document.title = (active ? active.name + ' — ' : '') + 'sin(editor)';
+  $('#ttl').textContent = (folder ? base(folder) : 'no folder') + (active ? ' · ' + active.name : '');
+}
+
+// ---------- tabs / files ----------
+function show(t) {
+  active = t;
+  cur.setModel(t ? t.model : null);
+  render();
+  if (t) { [editor, ed2].forEach((e) => e && e.layout()); cur.focus(); }
+}
+function add(t) {
+  t.ver = t.model.getAlternativeVersionId();
+  t.model.onDidChangeContent((e) => {
+    if (e.isEolChange) render();
+    if (pvOn && active === t) pvSoon();
+    const d = t.model.getAlternativeVersionId() !== t.ver;
+    if (d !== t.dirty) { t.dirty = d; render(); }
+  });
+  tabs.push(t); show(t);
+}
+async function openPath(p) {
+  const ex = tabs.find((t) => t.path === p);
+  if (ex) return show(ex);
+  let txt, enc;
+  try { ({ text: txt, enc } = await sin.read(p)); } catch (e) { return toast('cannot read ' + base(p) + ': ' + e.message); }
+  add({ path: p, name: base(p), enc, model: monaco.editor.createModel(txt, langFor(p)) });
+  addRec(p, false);
+}
+function newFile() {
+  add({ path: null, name: 'untitled-' + ++untitled, model: monaco.editor.createModel('', 'plaintext') });
+}
+async function close(t) {
+  if (t.dirty && !(await yes(t.name + ' has unsaved changes. close anyway?'))) return;
+  const i = tabs.indexOf(t);
+  tabs.splice(i, 1); t.model.dispose();
+  if (active === t) show(tabs[i] || tabs[i - 1] || null); else render();
+}
+async function save(as) {
+  const t = active; if (!t) return;
+  let p = t.path;
+  if (!p || as) { p = await sin.saveAs(t.name); if (!p) return; }
+  try { await sin.write(p, t.model.getValue(), t.enc || 'utf8'); } catch (e) { return toast('save failed: ' + e.message); }
+  t.path = p; t.name = base(p); t.dirty = false; t.ver = t.model.getAlternativeVersionId();
+  monaco.editor.setModelLanguage(t.model, langFor(p));
+  chime([440, 660]); render();
+}
+async function openFiles() { for (const p of await sin.openFiles()) await openPath(p); }
+async function openFolder() { const p = await sin.openFolder(); if (p) setFolder(p); }
+
+// ---------- explorer ----------
+async function setFolder(p) {
+  folder = p; openDirs.clear(); sel = null;
+  $('#root').textContent = base(p);
+  const el = $('#tree'); el.innerHTML = '';
+  await fill(el, p, 0);
+  addRec(p, true);
+  $('#app').classList.remove('nosb');
+  render();
+}
+const openDirs = new Set();
+let sel = null;
+async function fill(el, p, d) {
+  let items; try { items = await sin.ls(p); } catch { return; }
+  for (const f of items) {
+    const r = document.createElement('div');
+    r.className = 'row'; r.style.paddingLeft = 8 + d * 14 + 'px';
+    el.append(r);
+    const menu = (e) => { e.preventDefault(); e.stopPropagation(); ctx(e.clientX, e.clientY, menuFor(f)); };
+    r.oncontextmenu = menu;
+    if (f.dir) {
+      const kids = document.createElement('div'); kids.hidden = !openDirs.has(f.path); el.append(kids);
+      r.innerHTML = rowHtml(f, !kids.hidden);
+      let loaded = !kids.hidden;
+      if (loaded) await fill(kids, f.path, d + 1);
+      r.onclick = async (e) => {
+        if (e.target.closest('.dots')) return menu(e);
+        sel = f.path;
+        if (!loaded) { loaded = true; await fill(kids, f.path, d + 1); }
+        kids.hidden = !kids.hidden;
+        kids.hidden ? openDirs.delete(f.path) : openDirs.add(f.path);
+        r.innerHTML = rowHtml(f, !kids.hidden);
+      };
+    } else {
+      r.innerHTML = rowHtml(f, false);
+      r.onclick = (e) => { if (e.target.closest('.dots')) return menu(e); sel = dirOf(f.path); openPath(f.path); };
+    }
+  }
+}
+
+// ---------- recents ----------
+const rec = () => { try { return JSON.parse(localStorage.getItem('sin.rec') || '[]'); } catch { return []; } };
+function addRec(p, dir) {
+  try { localStorage.setItem('sin.rec', JSON.stringify([{ p, dir }, ...rec().filter((x) => x.p !== p)].slice(0, 5))); } catch {}
+  drawRec();
+}
+function drawRec() {
+  const el = $('#recent'), r = rec();
+  el.replaceChildren(...r.map((x) => {
+    const d = document.createElement('div');
+    d.className = 'row'; d.innerHTML = fileIcon(base(x.p), x.dir, false) + `<span class=\"nm\">${esc(x.p)}</span>`;
+    d.onclick = () => (x.dir ? setFolder(x.p) : openPath(x.p));
+    return d;
+  }));
+}
+
+// ---------- palette (also used for the language picker) ----------
+const fz = (q, s) => { s = s.toLowerCase(); let j = 0; for (const c of q) { j = s.indexOf(c, j); if (j < 0) return false; j++; } return true; };
+function pick(ph, items) {
+  const o = $('#pal'), i = $('#pal input'), l = $('#pal ul');
+  let sel = 0, list = items;
+  const draw = () => {
+    l.innerHTML = '';
+    list.slice(0, 300).forEach((it, n) => {
+      const li = document.createElement('li');
+      li.className = n === sel ? 'on' : '';
+      li.innerHTML = `<span>${it.icon || ''}${esc(it.label)}</span><kbd>${esc(it.hint || '')}</kbd>`;
+      li.onclick = () => go(it);
+      l.append(li);
+    });
+    l.children[sel]?.scrollIntoView({ block: 'nearest' });
+  };
+  const shut = () => { o.hidden = true; i.oninput = i.onkeydown = o.onclick = null; if (editor) editor.focus(); };
+  const go = (it) => { shut(); it.fn(); };
+  i.oninput = () => { const q = i.value.toLowerCase(); list = items.filter((x) => fz(q, x.label)); sel = 0; draw(); };
+  i.onkeydown = (e) => {
+    if (e.key === 'ArrowDown') { sel = Math.min(sel + 1, Math.min(list.length, 300) - 1); draw(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { sel = Math.max(sel - 1, 0); draw(); e.preventDefault(); }
+    else if (e.key === 'Enter' && list[sel]) go(list[sel]);
+    else if (e.key === 'Escape') shut();
+  };
+  o.onclick = (e) => e.target === o && shut();
+  o.hidden = false; i.value = ''; i.placeholder = ph; i.focus(); draw();
+}
+const langPicker = () => active && pick('language mode…',
+  monaco.languages.getLanguages().filter((l) => !HIDE.has(l.id)).map((l) => ({ label: l.aliases?.[0] || l.id, hint: l.id, icon: langIcon(l.id),
+    fn: () => { monaco.editor.setModelLanguage(active.model, l.id); render(); } }))
+    .sort((a, b) => a.label.localeCompare(b.label)));
+const toggleSide = () => $('#app').classList.toggle('nosb');
+const toggleSound = () => { set('sound', !S.sound); if (S.sound) tone(523); };
+const opt = (k, v) => () => { const x = { [k]: v() }; [editor, ed2].forEach((e) => e && e.updateOptions(x)); };
+let wrap = false, mini = true;
+const cmds = [
+  ['new file', 'ctrl+n', newFile], ['open file…', 'ctrl+o', openFiles], ['open folder…', 'ctrl+shift+o', openFolder],
+  ['save', 'ctrl+s', () => save()], ['save as…', 'ctrl+shift+s', () => save(true)],
+  ['close tab', 'ctrl+w', () => active && close(active)], ['change language mode', '', langPicker],
+  ['toggle sidebar', 'ctrl+b', toggleSide], ['toggle minimap', '', () => set('mini', !S.mini)],
+  ['toggle word wrap', '', () => set('wrap', !S.wrap)], ['open settings', 'ctrl+,', openSettings], ['toggle terminal fullscreen', '', termFull],
+  ['toggle sound', '', toggleSound], ['welcome', '', () => show(null)],
+  ['go to file…', 'ctrl+p', finder], ['search project', 'ctrl+shift+f', search], ['split pane', 'ctrl+\\', split],
+  ['toggle terminal', 'ctrl+`', toggleTerm], ['new terminal', 'ctrl+shift+`', newTerm],
+  ['change encoding', '', () => encPicker()], ['change line endings', '', () => eolPicker()],
+  ['markdown preview', 'ctrl+shift+m', () => togglePreview()],
+  ['go to symbol', '', () => cur.getAction('editor.action.quickOutline')?.run()],
+  ['go to line', 'ctrl+g', () => cur.getAction('editor.action.gotoLine')?.run()],
+].map(([label, hint, fn]) => ({ label, hint, fn }));
+const palette = () => pick('type a command…', cmds);
+
+// ---------- zed-isms: file finder, project search, split panes ----------
+const onPos = (e) => ($('#pos').textContent = `ln ${e.position.lineNumber}, col ${e.position.column}`);
+function focusPane(e) {
+  cur = e;
+  const t = tabs.find((x) => x.model === e.getModel());
+  if (t && t !== active) { active = t; render(); }
+}
+async function finder() {
+  if (!folder) return toast('open a folder first (ctrl+shift+o)');
+  const all = await sin.files(folder);
+  pick('go to file…', all.map((p) => ({ label: p.slice(folder.length + 1), icon: fileIcon(base(p)), fn: () => openPath(p) }))
+    .sort((a, b) => a.label.length - b.label.length));
+}
+function search() {
+  if (!folder) return toast('open a folder first (ctrl+shift+o)');
+  $('#app').classList.remove('nosb');
+  const open = $('#srch').hidden;
+  $('#srch').hidden = !open; $('#tree').hidden = open;
+  if (open) $('#q').focus();
+}
+$('#q').onkeydown = async (e) => {
+  if (e.key !== 'Enter' || !e.target.value) return;
+  const h = $('#hits'); h.textContent = 'searching…';
+  const r = await sin.grep(folder, e.target.value);
+  h.replaceChildren(...(r.length ? r.map((x) => {
+    const d = document.createElement('div');
+    d.className = 'row';
+    d.innerHTML = `${esc(x.text)}<small>${esc(x.p.slice(folder.length + 1))}:${x.line}</small>`;
+    d.onclick = async () => { await openPath(x.p); cur.setPosition({ lineNumber: x.line, column: 1 }); cur.revealLineInCenter(x.line); cur.focus(); };
+    return d;
+  }) : [Object.assign(document.createElement('div'), { className: 'empty', textContent: 'no matches' })]));
+};
+function split() {
+  const box = $('#editor2');
+  if (ed2) { ed2.dispose(); ed2 = null; box.hidden = true; focusPane(editor); return; }
+  if (!active) return;
+  box.hidden = false;
+  ed2 = monaco.editor.create(box, { ...eopts, model: active.model });
+  ed2.onDidChangeCursorPosition(onPos);
+  ed2.onDidFocusEditorText(() => focusPane(ed2));
+  focusPane(ed2); ed2.focus();
+}
+
+// ---------- terminal (xterm.js + node-pty) ----------
+let terms = [], curTerm = null, tn = 0;
+const TTHEME = { background: '#232a2e', foreground: '#d3c6aa', cursor: '#a7c080', cursorAccent: '#232a2e', selectionBackground: '#543a48',
+  black: '#475258', red: '#e67e80', green: '#a7c080', yellow: '#dbbc7f', blue: '#7fbbb3', magenta: '#d699b9', cyan: '#83c092', white: '#d3c6aa',
+  brightBlack: '#859289', brightRed: '#e67e80', brightGreen: '#a7c080', brightYellow: '#dbbc7f', brightBlue: '#7fbbb3', brightMagenta: '#d699b9', brightCyan: '#83c092', brightWhite: '#d3c6aa' };
+function renderTT() {
+  $('#ttabs').replaceChildren(...terms.map((t) => {
+    const d = document.createElement('div'), x = document.createElement('i');
+    d.className = 'tt' + (t === curTerm ? ' on' : '');
+    d.innerHTML = (window.ZI ? window.ZI.svg.terminal : '❯ ') + 'terminal ' + t.n;
+    x.textContent = '×'; d.append(x);
+    d.onclick = () => showTerm(t);
+    x.onclick = (e) => { e.stopPropagation(); closeTerm(t); };
+    return d;
+  }));
+}
+function showTerm(t) {
+  curTerm = t; $('#term').hidden = false;
+  terms.forEach((x) => (x.el.hidden = x !== t));
+  renderTT();
+  requestAnimationFrame(() => { t.fit.fit(); t.term.focus(); });
+}
+function closeTerm(t, exited) {
+  if (!exited && t.id) sin.term.kill(t.id);
+  t.term.dispose(); t.el.remove();
+  const i = terms.indexOf(t); terms.splice(i, 1);
+  if (curTerm === t) { curTerm = null; if (terms.length) showTerm(terms[i] || terms[i - 1]); }
+  if (!terms.length) { $('#term').hidden = true; $('#main').classList.remove('tfull'); if (cur) cur.focus(); }
+  renderTT();
+}
+async function newTerm() {
+  if (!XTerm) return toast('terminal needs deps: run npm install');
+  const el = document.createElement('div'); el.hidden = true; $('#tbody').append(el);
+  const term = new XTerm.Terminal({ fontFamily: ffam(S.tfont || S.font), fontSize: S.tsize, cursorBlink: true, theme: termTheme(), scrollback: 5000 });
+  const fit = new XTermFit.FitAddon(); term.loadAddon(fit);
+  const t = { el, term, fit, id: 0, n: ++tn };
+  terms.push(t); showTerm(t);
+  term.open(el); fit.fit();
+  term.attachCustomKeyEventHandler((e) => {
+    if (e.type !== 'keydown' || !(e.ctrlKey || e.metaKey) || !e.shiftKey) return true;
+    const k = e.key.toLowerCase();
+    if (k === 'c') { navigator.clipboard.writeText(term.getSelection()); return false; }
+    if (k === 'v') { navigator.clipboard.readText().then((s) => term.paste(s)); return false; }
+    return true;
+  });
+  term.onData((d) => t.id && sin.term.write(t.id, d));
+  term.onResize(({ cols, rows }) => t.id && sin.term.resize(t.id, cols, rows));
+  try { t.id = await sin.term.spawn(folder, term.cols, term.rows); }
+  catch (e) { term.write('\r\n' + e.message + '\r\n'); }
+}
+function toggleTerm() {
+  if (!$('#term').hidden) { $('#term').hidden = true; $('#main').classList.remove('tfull'); if (cur) cur.focus(); }
+  else if (terms.length) showTerm(curTerm || terms[0]);
+  else newTerm();
+}
+sin.term.onData((id, d) => terms.find((t) => t.id === id)?.term.write(d));
+sin.term.onExit((id) => { const t = terms.find((x) => x.id === id); if (t) closeTerm(t, true); });
+new ResizeObserver(() => { if (curTerm && !$('#term').hidden) curTerm.fit.fit(); }).observe($('#tbody'));
+$('#t-new').onclick = newTerm;
+$('#t-x').onclick = toggleTerm;
+let th = 0; try { th = +localStorage.getItem('sin.th'); } catch {}
+if (th) $('#app').style.setProperty('--th', th + 'px');
+$('#tgrip').onpointerdown = (e) => {
+  const g = e.target; g.setPointerCapture(e.pointerId);
+  g.onpointermove = (m) => {
+    const h = Math.max(100, Math.min(innerHeight * 0.8, innerHeight - 24 - m.clientY));
+    $('#app').style.setProperty('--th', h + 'px');
+    try { localStorage.setItem('sin.th', h); } catch {}
+  };
+  g.onpointerup = () => { g.onpointermove = g.onpointerup = null; };
+};
+addEventListener('keydown', (e) => {
+  if (e.ctrlKey && (e.key === '`' || e.key === '~')) { e.preventDefault(); e.stopPropagation(); e.shiftKey ? newTerm() : toggleTerm(); }
+}, true);
+
+// ---------- settings + themes (saved to localStorage) ----------
+const THEMES = `everforest-dark|Everforest Dark|1|232a2e 2d353b 343f44 3d484d 475258 d3c6aa 7a8478 a7c080 83c092 dbbc7f e69875 e67e80 7fbbb3 e67e80
+everforest-light|Everforest Light|0|efebd4 fdf6e3 f4f0d9 efebd4 e6e2cc 5c6a72 939f91 8da101 35a77c dfa000 f57d26 f85552 3a94c5 f85552
+dracula|Dracula|1|21222c 282a36 343746 44475a 565a73 f8f8f2 6272a4 50fa7b 8be9fd f1fa8c ffb86c ff5555 bd93f9 ff79c6
+one-dark|One Dark|1|21252b 282c34 2c313a 3a3f4b 4b5263 abb2bf 5c6370 98c379 56b6c2 e5c07b d19a66 e06c75 61afef c678dd
+nord|Nord|1|272c36 2e3440 3b4252 434c5e 4c566a d8dee9 616e88 a3be8c 88c0d0 ebcb8b d08770 bf616a 81a1c1 81a1c1
+gruvbox-dark|Gruvbox Dark|1|1d2021 282828 3c3836 504945 665c54 ebdbb2 928374 b8bb26 8ec07c fabd2f fe8019 fb4934 83a598 fb4934
+catppuccin-mocha|Catppuccin Mocha|1|11111b 1e1e2e 313244 45475a 585b70 cdd6f4 6c7086 a6e3a1 94e2d5 f9e2af fab387 f38ba8 89b4fa cba6f7
+tokyo-night|Tokyo Night|1|16161e 1a1b26 24283b 2f334d 414868 c0caf5 565f89 9ece6a 73daca e0af68 ff9e64 f7768e 7aa2f7 bb9af7
+solarized-dark|Solarized Dark|1|00212b 002b36 073642 0d4350 586e75 93a1a1 657b83 859900 2aa198 b58900 cb4b16 dc322f 268bd2 859900
+solarized-light|Solarized Light|0|eee8d5 fdf6e3 f5eed9 eee8d5 d9d2bd 586e75 93a1a1 859900 2aa198 b58900 cb4b16 dc322f 268bd2 859900
+monokai|Monokai|1|1e1f1c 272822 34352f 3e3d32 49483e f8f8f2 75715e a6e22e 66d9ef e6db74 fd971f f92672 66d9ef f92672
+github-dark|GitHub Dark|1|010409 0d1117 161b22 21262d 30363d c9d1d9 8b949e 7ee787 79c0ff d29922 ffa657 ff7b72 79c0ff ff7b72
+rose-pine|Rosé Pine|1|191724 1f1d2e 26233a 2a2837 393552 e0def4 6e6a86 9ccfd8 31748f f6c177 ebbcba eb6f92 9ccfd8 c4a7e7`.split('\n').map((l) => { const [id, name, dk, c] = l.split('|'); return { id, name, dark: dk === '1', c: c.split(' ').map((x) => '#' + x) }; });
+const DEF = { theme: 'everforest-dark', font: 'Loomglyph, JetBrains Mono', size: 14, lh: 0, lig: true, wrap: false, mini: true, ln: 'on',
+  ws: 'none', tab: 2, cursor: 'line', tsize: 13, tfont: '', sound: true };
+let S = { ...DEF };
+try { Object.assign(S, JSON.parse(localStorage.getItem('sin.s') || '{}')); } catch {}
+sound = S.sound;
+const saveS = () => { try { localStorage.setItem('sin.s', JSON.stringify(S)); } catch {} };
+const ffam = (f) => f.split(',').map((x) => `'${x.trim().replace(/['\"]/g, '')}'`).join(',') + ",'Cascadia Code',Consolas,monospace";
+const curC = () => (THEMES.find((x) => x.id === S.theme) || THEMES[0]).c;
+const mix = (a, b, t) => '#' + [0, 2, 4].map((i) => Math.round(parseInt(a.slice(1 + i, 3 + i), 16) * (1 - t) + parseInt(b.slice(1 + i, 3 + i), 16) * t).toString(16).padStart(2, '0')).join('');
+const termTheme = () => {
+  const [d, , , b2, b3, fg, mute, g, a, y, , r, bl, p] = curC();
+  return { background: d, foreground: fg, cursor: g, cursorAccent: d, selectionBackground: mix(b2, g, .3), black: b3, red: r, green: g, yellow: y,
+    blue: bl, magenta: p, cyan: a, white: fg, brightBlack: mute, brightRed: r, brightGreen: g, brightYellow: y, brightBlue: bl, brightMagenta: p, brightCyan: a, brightWhite: fg };
+};
+function applyTheme() {
+  const t = THEMES.find((x) => x.id === S.theme) || THEMES[0], c = t.c, st = document.documentElement.style;
+  const [d, b0, b1, b2, b3, fg, mute, g, a, y, o, r, bl, p] = c, h = (x) => x.slice(1);
+  ['d', 'b0', 'b1', 'b2', 'b3', 'fg', 'mute', 'g', 'a', 'y', 'o'].forEach((k, i) => st.setProperty('--' + k, c[i]));
+  st.setProperty('--sb', mix(d, b0, .5)); st.setProperty('--sbd', mix(b1, d, .5)); st.colorScheme = t.dark ? 'dark' : 'light';
+  monaco.editor.defineTheme('sin-' + t.id, { base: t.dark ? 'vs-dark' : 'vs', inherit: true,
+    rules: [['comment', mute, 'italic'], ['keyword', p], ['string', g], ['number', o], ['type', y], ['delimiter', mute], ['tag', r],
+      ['attribute.name', y], ['variable', fg], ['predefined', bl]].map(([token, f, fontStyle]) => ({ token, foreground: h(f), fontStyle })),
+    colors: { 'editor.background': b0, 'editor.foreground': fg, 'editorLineNumber.foreground': b3, 'editorLineNumber.activeForeground': g,
+      'editor.lineHighlightBackground': b1, 'editor.selectionBackground': mix(b2, g, .3), 'editorCursor.foreground': g,
+      'editorIndentGuide.background1': b2, 'editorWidget.background': b1, 'minimap.background': b0,
+      'scrollbarSlider.background': b3 + '66', 'scrollbarSlider.hoverBackground': b3 + 'aa', 'scrollbarSlider.activeBackground': b3 } });
+  monaco.editor.setTheme('sin-' + t.id);
+  sin.overlay(d, g);
+}
+const edOpts = () => ({ fontFamily: ffam(S.font), fontSize: S.size, lineHeight: S.lh, fontLigatures: S.lig, wordWrap: S.wrap ? 'on' : 'off',
+  minimap: { enabled: S.mini }, lineNumbers: S.ln, renderWhitespace: S.ws, tabSize: S.tab, cursorStyle: S.cursor });
+function applyS() {
+  sound = S.sound; $('#snd').textContent = '♪ ' + (S.sound ? 'on' : 'off');
+  applyTheme();
+  eopts = { ...eopts, ...edOpts() };
+  [editor, ed2].forEach((e) => e && e.updateOptions(edOpts()));
+  terms.forEach((t) => { t.term.options.fontFamily = ffam(S.tfont || S.font); t.term.options.fontSize = S.tsize; t.term.options.theme = termTheme(); try { t.fit.fit(); } catch {} });
+}
+const set = (k, v) => { S[k] = v; saveS(); applyS(); if (pvOn) pvSoon(); };
+const FONTS = ['Loomglyph', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', 'IBM Plex Mono', 'Hack', 'Iosevka', 'Menlo', 'Consolas', 'SF Mono', 'Monaspace Neon', 'Victor Mono', 'Geist Mono'];
+const FIELDS = [['theme', 'theme', 'select', THEMES.map((t) => [t.id, t.name])], ['font', 'editor font (comma = fallbacks)', 'font'], ['tfont', 'terminal font (blank = editor font)', 'font'],
+  ['size', 'font size', 'num', [8, 40]], ['lh', 'line height (0 = auto)', 'num', [0, 60]], ['lig', 'font ligatures', 'bool'],
+  ['wrap', 'word wrap', 'bool'], ['mini', 'minimap', 'bool'], ['ln', 'line numbers', 'select', [['on', 'on'], ['off', 'off'], ['relative', 'relative']]],
+  ['ws', 'show whitespace', 'select', [['none', 'none'], ['boundary', 'boundary'], ['all', 'all']]], ['tab', 'tab size', 'num', [1, 8]],
+  ['cursor', 'cursor', 'select', [['line', 'line'], ['block', 'block'], ['underline', 'underline']]], ['tsize', 'terminal font size', 'num', [8, 32]], ['sound', 'sound', 'bool']];
+let installed = null;
+async function loadFonts() {
+  try { installed = [...new Set((await queryLocalFonts()).map((f) => f.family))].sort(); } catch {}
+}
+function fontRow(k, label) {
+  const row = document.createElement('div'), inp = document.createElement('input'), sug = document.createElement('div'), hint = document.createElement('small');
+  row.className = 'sr fr'; row.innerHTML = `<span>${label}</span>`;
+  inp.value = S[k]; inp.spellcheck = false; inp.autocomplete = 'off'; inp.placeholder = k === 'tfont' ? 'same as editor font' : 'e.g. JetBrains Mono, Fira Code';
+  sug.className = 'fs';
+  const ok = (n) => !installed || installed.some((f) => f.toLowerCase() === n.toLowerCase());
+  let tm;
+  const commit = () => { draw(); clearTimeout(tm); tm = setTimeout(() => set(k, inp.value.trim() || DEF[k]), 250); };
+  function draw() {
+    const parts = inp.value.split(','), last = parts.pop().trim().toLowerCase();
+    sug.replaceChildren(...(installed || FONTS).filter((n) => n.toLowerCase().includes(last)).slice(0, 8).map((n) => {
+      const b = document.createElement('span'); b.textContent = n;
+      b.onclick = () => { inp.value = [...parts.map((x) => x.trim()), n].join(', '); commit(); inp.focus(); };
+      return b;
+    }));
+    hint.textContent = inp.value.split(',').map((x) => x.trim()).filter(Boolean).map((n) => (ok(n) ? '✓ ' : '✗ ') + n).join('   ');
+  }
+  inp.oninput = commit; inp.onfocus = draw;
+  row.append(inp, sug, hint); draw();
+  return row;
+}
+function openSettings() {
+  const o = $('#set'), box = document.createElement('div');
+  box.innerHTML = '<h3>settings</h3>';
+  loadFonts().then(() => box.querySelectorAll('.fr input').forEach((i) => i.onfocus()));
+  for (const [k, label, type, opts] of FIELDS) {
+    if (type === 'font') { box.append(fontRow(k, label)); continue; }
+    const row = document.createElement('label'), s = document.createElement('span'); let c;
+    row.className = 'sr'; s.textContent = label; row.append(s);
+    if (type === 'select') { c = document.createElement('select'); c.innerHTML = opts.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join(''); c.value = S[k]; c.onchange = () => set(k, c.value); }
+    else if (type === 'bool') { c = document.createElement('input'); c.type = 'checkbox'; c.checked = S[k]; c.onchange = () => set(k, c.checked); }
+    else {
+      c = document.createElement('input'); c.value = S[k];
+      if (type === 'num') { c.type = 'number'; c.min = opts[0]; c.max = opts[1]; c.onchange = () => set(k, Math.min(opts[1], Math.max(opts[0], Number(c.value) || DEF[k]))); }
+      else { c.setAttribute('list', 'fonts'); c.onchange = () => set(k, c.value.trim() || DEF[k]); }
+    }
+    row.append(c); box.append(row);
+  }
+  const rs = document.createElement('button');
+  rs.textContent = 'reset to defaults'; rs.onclick = () => { S = { ...DEF }; saveS(); applyS(); openSettings(); };
+  box.append(rs);
+  o.replaceChildren(box); o.hidden = false;
+  o.onclick = (e) => e.target === o && closeSettings();
+  o.onkeydown = (e) => e.key === 'Escape' && closeSettings();
+  (box.querySelector('.fr input') || box.querySelector('select')).focus();
+}
+function closeSettings() { $('#set').hidden = true; if (cur) cur.focus(); }
+
+// ---------- explorer: create / rename / delete / menus ----------
+function ask(ph, val = '') {
+  return new Promise((res) => {
+    const o = $('#pal'), i = $('#pal input');
+    $('#pal ul').innerHTML = ''; o.hidden = false; i.value = val; i.placeholder = ph; i.focus(); i.select();
+    const end = (v) => { o.hidden = true; i.onkeydown = i.oninput = o.onclick = null; res(v); };
+    i.oninput = null;
+    i.onkeydown = (e) => { if (e.key === 'Enter') end(i.value.trim() || null); else if (e.key === 'Escape') end(null); };
+    o.onclick = (e) => e.target === o && end(null);
+  });
+}
+const join = (d, n) => d + (d.includes('\\') && !d.includes('/') ? '\\' : '/') + n;
+const dirOf = (p) => p.slice(0, Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')));
+const under = (p, root) => p === root || p.startsWith(root + '/') || p.startsWith(root + '\\');
+// in-app confirm: native confirm() can leave electron text inputs unable to take keyboard focus
+function yes(msg) {
+  return new Promise((res) => {
+    const o = $('#set'), box = document.createElement('div'), p = document.createElement('p'), ok = document.createElement('button'), no = document.createElement('button');
+    p.textContent = msg; ok.textContent = 'yes'; no.textContent = 'cancel';
+    const end = (v) => { o.hidden = true; o.onclick = o.onkeydown = null; res(v); };
+    ok.onclick = () => end(true); no.onclick = () => end(false);
+    o.onclick = (e) => e.target === o && end(false);
+    o.onkeydown = (e) => e.key === 'Escape' && end(false);
+    box.style.maxWidth = '420px'; box.append(p, ok, ' ', no);
+    o.replaceChildren(box); o.hidden = false; no.focus();
+  });
+}
+async function refreshTree() {
+  if (!folder) return;
+  const sc = $('#sidein'), top = sc.scrollTop, el = $('#tree');
+  el.innerHTML = ''; await fill(el, folder, 0); sc.scrollTop = top;
+}
+async function mk(dir, isDir) {
+  if (!folder) return toast('open a folder first (ctrl+shift+o)');
+  const n = await ask(isDir ? 'new folder name…' : 'new file name… (a/b.txt makes folders)'); if (!n) return;
+  const p = join(dir || folder, n);
+  try { await sin.create(p, isDir); } catch (e) { return toast('create failed: ' + e.message); }
+  openDirs.add(dir || folder); await refreshTree();
+  if (!isDir) openPath(p);
+}
+async function renameItem(f) {
+  const n = await ask('rename…', base(f.path)); if (!n || n === base(f.path)) return;
+  const np = join(dirOf(f.path), n);
+  try { await sin.rename(f.path, np); } catch (e) { return toast('rename failed: ' + e.message); }
+  for (const t of tabs) if (t.path && under(t.path, f.path)) { t.path = np + t.path.slice(f.path.length); t.name = base(t.path); monaco.editor.setModelLanguage(t.model, langFor(t.path)); }
+  render(); refreshTree();
+}
+async function delItem(f) {
+  if (!(await yes(`move "${base(f.path)}" to the trash?`))) return;
+  try { await sin.trash(f.path); } catch (e) { return toast('delete failed: ' + e.message); }
+  tabs.filter((t) => t.path && under(t.path, f.path)).forEach((t) => { t.dirty = false; close(t); });
+  refreshTree();
+}
+const menuFor = (f) => [
+  ...(f.dir ? [['new file here', () => mk(f.path, false)], ['new folder here', () => mk(f.path, true)]] : []),
+  ['rename', () => renameItem(f)], ['copy path', () => { navigator.clipboard.writeText(f.path); toast('copied path'); }], ['delete (trash)', () => delItem(f)],
+];
+function ctx(x, y, items) {
+  const m = $('#ctx');
+  m.replaceChildren(...items.map(([l, fn]) => { const d = document.createElement('div'); d.textContent = l; d.onclick = () => { m.hidden = true; fn(); }; return d; }));
+  m.hidden = false; m.style.left = Math.min(x, innerWidth - 180) + 'px'; m.style.top = Math.min(y, innerHeight - 170) + 'px';
+}
+addEventListener('pointerdown', (e) => { if (!e.target.closest('#ctx')) $('#ctx').hidden = true; }, true);
+$('#s-nf').onclick = () => mk(sel || folder, false);
+$('#s-nd').onclick = () => mk(sel || folder, true);
+$('#s-rf').onclick = refreshTree;
+function termFull() {
+  $('#main').classList.toggle('tfull');
+  if (!terms.length) newTerm(); else { $('#term').hidden = false; requestAnimationFrame(() => curTerm && curTerm.fit.fit()); }
+}
+$('#t-fs').onclick = termFull;
+$('#thead').ondblclick = (e) => e.target.id === 'thead' && termFull();
+
+// ---------- extra languages monaco lacks (haskell, crystal, zig, toml, nix) ----------
+function extraLangs() {
+  const re = (s) => s.replace(/[.*+?^${}()|[\]\\/\-]/g, '\\$&');
+  const def = (id, name, ext, o) => {
+    monaco.languages.register({ id, aliases: [name], extensions: ext });
+    monaco.languages.setLanguageConfiguration(id, { comments: { lineComment: o.line, blockComment: o.block },
+      brackets: [['{', '}'], ['[', ']'], ['(', ')']],
+      autoClosingPairs: [{ open: '{', close: '}' }, { open: '[', close: ']' }, { open: '(', close: ')' }, { open: '"', close: '"', notIn: ['string'] }] });
+    monaco.languages.setMonarchTokensProvider(id, { keywords: o.kw, typeKeywords: o.ty || [], tokenizer: {
+      root: [
+        ...(o.block ? [[new RegExp(re(o.block[0])), 'comment', '@blk']] : []),
+        [new RegExp(re(o.line) + '.*$'), 'comment'],
+        ...(o.pre || []),
+        [/"(?:[^"\\]|\\.)*"/, 'string'], [/'(?:[^'\\]|\\.)'/, 'string'],
+        [/\b0[xX][0-9a-fA-F_]+\b|\b\d[\d_]*(\.\d+)?([eE][+-]?\d+)?\b/, 'number'],
+        [/[A-Z][\w']*/, 'type.identifier'],
+        [/[a-z_][\w']*[!?]?/, { cases: { '@keywords': 'keyword', '@typeKeywords': 'type', '@default': 'identifier' } }],
+        [/[{}()[\]]/, '@brackets'],
+        [/[-+*/%=<>!&|^~:.,;?$\\]+/, 'operator'],
+      ],
+      blk: [[new RegExp(re(o.block ? o.block[1] : '$^')), 'comment', '@pop'], [/./, 'comment']],
+    } });
+  };
+  def('haskell', 'Haskell', ['.hs', '.lhs'], { line: '--', block: ['{-', '-}'],
+    kw: 'case class data default deriving do else foreign if import in infix infixl infixr instance let module newtype of then type where forall qualified as hiding mdo proc rec family pattern'.split(' ') });
+  def('crystal', 'Crystal', ['.cr'], { line: '#',
+    kw: 'abstract alias annotation as asm begin break case class def do else elsif end ensure enum extend for fun if in include lib macro module next nil of out private protected require rescue return select self sizeof struct super then true false type typeof union uninitialized unless until verbatim when while with yield instance_sizeof pointerof'.split(' '),
+    pre: [[/@@?[a-z_]\w*/, 'variable'], [/:[a-zA-Z_]\w*[!?]?/, 'constant']] });
+  def('zig', 'Zig', ['.zig'], { line: '//',
+    kw: 'const var fn pub return if else while for switch break continue defer errdefer try catch orelse struct enum union error test comptime inline extern export usingnamespace async await suspend resume unreachable and or null undefined true false packed align'.split(' '),
+    ty: 'i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f16 f32 f64 f128 bool void type anyerror anytype noreturn c_int'.split(' '),
+    pre: [[/@\w+/, 'predefined']] });
+  def('toml', 'TOML', ['.toml'], { line: '#', kw: ['true', 'false'],
+    pre: [[/^\s*\[\[?[^\]\n]+\]\]?/, 'type'], [/[A-Za-z0-9_-]+(?=\s*=)/, 'attribute.name']] });
+  def('nix', 'Nix', ['.nix'], { line: '#', block: ['/*', '*/'],
+    kw: 'let in if then else with rec inherit assert import or true false null'.split(' ') });
+}
+
+// ---------- status bar pickers: encoding + line endings ----------
+const ENC = { utf8: 'UTF-8', utf8bom: 'UTF-8 with BOM', utf16le: 'UTF-16 LE', utf16be: 'UTF-16 BE', latin1: 'ISO-8859-1' };
+function encPicker() {
+  if (!active) return;
+  pick('encoding…', [
+    ...Object.entries(ENC).map(([k, n]) => ({ label: 'reopen with ' + n, fn: () => reopenEnc(k) })),
+    ...Object.entries(ENC).map(([k, n]) => ({ label: 'save with ' + n, fn: () => { active.enc = k; render(); if (active.path) save(); } })),
+  ]);
+}
+async function reopenEnc(k) {
+  const t = active;
+  if (!t.path) return toast('save the file first');
+  if (t.dirty && !(await yes('discard unsaved changes and reopen as ' + ENC[k] + '?'))) return;
+  const r = await sin.read(t.path, k);
+  t.model.setValue(r.text); t.enc = k; t.ver = t.model.getAlternativeVersionId(); t.dirty = false; render();
+}
+function eolPicker() {
+  if (!active) return;
+  const E = monaco.editor.EndOfLineSequence;
+  pick('line endings…', [['LF  (\\n)', E.LF], ['CRLF  (\\r\\n)', E.CRLF]].map(([label, v]) => ({ label, fn: () => { active.model.setEOL(v); render(); } })));
+}
+const HIDE = new Set('abap apex azcli cameligo csp cypher ecl flow9 freemarker lexon m3 mips msdax pascaligo pla postiats powerquery qsharp redis redshift sb sparql st test'.split(' '));
+
+function pvRender(src, file) {
+  const baseUrl = file ? fileUrl(dirOf(file) + '/') : null;
+  const abs = (h) => { if (!baseUrl || /^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(h)) return h; try { return new URL(h, baseUrl).href; } catch { return h; } };
+  const q = (s) => esc(String(s)).replace(/"/g, '&quot;');
+  const mk = new marked.Marked({ gfm: true, renderer: {
+    code({ text, lang }) { return `<pre><code>${hl(text, (lang || '').split(/\s/)[0])}</code></pre>\n`; },
+    image({ href, title, text }) { return `<img src="${q(abs(href))}" alt="${q(text)}"${title ? ` title="${q(title)}"` : ''}>`; },
+    heading({ tokens, depth, text }) {
+      const id = text.toLowerCase().replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
+      return `<h${depth} id="${q(id)}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
+    },
+  } });
+  return mk.parse(src);
+}
+
+// ---------- markdown preview (sandboxed iframe: no scripts can ever run in it) ----------
+let marked, pvOn = false, pvTm;
+async function loadMarked() {
+  try { const m = { exports: {} }; new Function('module', 'exports', await sin.asset('marked/lib/marked.umd.js'))(m, m.exports); marked = m.exports; } catch {}
+}
+const fileUrl = (p) => encodeURI('file:///' + p.replace(/\\/g, '/').replace(/^\//, ''));
+const urlToPath = (u) => { let p = decodeURIComponent(u.pathname); if (/^\/[A-Za-z]:/.test(p)) p = p.slice(1).replace(/\//g, '\\'); return p; };
+function hl(code, lang) {
+  let l = null;
+  if (lang) { const k = lang.toLowerCase(); l = monaco.languages.getLanguages().find((x) => x.id === k || x.aliases?.some((a) => a.toLowerCase() === k))?.id || extMap['.' + k] || extra[k]; }
+  const q = (s) => esc(s).replace(/"/g, '&quot;');
+  if (!l) return esc(code);
+  try {
+    const [, , , , , , mute, g, , y, o, r, bl, p] = curC();
+    const col = (t) => (t.startsWith('comment') ? mute : t.startsWith('string') ? g : t.startsWith('number') || t.startsWith('constant') ? o : t.startsWith('keyword') ? p
+      : t.startsWith('type') || t.startsWith('attribute') ? y : t.startsWith('tag') ? r : t.startsWith('predefined') || t.startsWith('variable') ? bl : null);
+    const toks = monaco.editor.tokenize(code, l);
+    return code.split('\n').map((ln, i) => (toks[i] || []).map((t, j, arr) => {
+      const seg = esc(ln.slice(t.offset, arr[j + 1] ? arr[j + 1].offset : undefined)), c = col(t.type);
+      return c ? `<span style="color:${c}${t.type.startsWith('comment') ? ';font-style:italic' : ''}">${seg}</span>` : seg;
+    }).join('')).join('\n');
+  } catch { return esc(code); }
+}
+const pvCss = () => {
+  const [d, b0, b1, b2, b3, fg, mute, g, a, y] = curC();
+  return `html{background:${b0};color:${fg};font:15px/1.65 -apple-system,'Segoe UI',Inter,system-ui,sans-serif}
+body{max-width:860px;margin:0 auto;padding:24px 32px 64px}
+h1,h2,h3,h4,h5,h6{color:${g};line-height:1.25;margin:1.5em 0 .6em;font-weight:600}
+h1,h2{padding-bottom:.3em;border-bottom:1px solid ${b2}}h1{font-size:2em}h2{font-size:1.5em}h3{font-size:1.2em}
+a{color:${a};text-decoration:none}a:hover{text-decoration:underline}
+code{font-family:${ffam(S.font)};font-size:.9em;background:${b1};padding:.15em .4em;border-radius:5px;color:${y}}
+pre{background:${d};border:1px solid ${b2};border-radius:10px;padding:14px 16px;overflow:auto;line-height:1.5}
+pre code{background:none;padding:0;color:${fg};font-size:13px}
+blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid ${g};color:${mute};background:${b1}66}
+table{border-collapse:collapse;margin:1em 0;display:block;overflow:auto}th,td{border:1px solid ${b2};padding:6px 12px}th{background:${b1}}
+hr{border:0;border-top:1px solid ${b2};margin:2em 0}img{max-width:100%;border-radius:6px}
+ul,ol{padding-left:1.6em}li{margin:.2em 0}input[type=checkbox]{accent-color:${g};margin-right:.4em}
+::selection{background:${mix(b2, g, .35)}}
+::-webkit-scrollbar{width:12px;height:12px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:${b3};border:3px solid transparent;background-clip:content-box;border-radius:8px}`;
+};
+const pvVisible = () => pvOn && active && active.model.getLanguageId() === 'markdown';
+function pvUpdate() {
+  const f = $('#mdp'), vis = pvVisible(); f.hidden = !vis;
+  if (!vis || !marked || !f.contentDocument || !f.contentDocument.body) return;
+  const doc = f.contentDocument, top = doc.documentElement.scrollTop;
+  if (!doc._hooked) { doc._hooked = true; doc.addEventListener('click', pvClick); }
+  doc.getElementById('st').textContent = pvCss();
+  doc.body.innerHTML = pvRender(active.model.getValue(), active.path);
+  doc.documentElement.scrollTop = top;
+}
+const pvSoon = () => { clearTimeout(pvTm); pvTm = setTimeout(pvUpdate, 120); };
+function pvSync() {
+  const f = $('#mdp'); if (f.hidden || !f.contentDocument) return;
+  const max = cur.getScrollHeight() - cur.getLayoutInfo().height, d = f.contentDocument.documentElement;
+  if (max > 0) d.scrollTop = (cur.getScrollTop() / max) * (d.scrollHeight - d.clientHeight);
+}
+function togglePreview() {
+  if (!active || active.model.getLanguageId() !== 'markdown') return toast('open a markdown file first');
+  if (!marked) return toast('preview needs deps: run npm install');
+  pvOn = !pvOn; pvUpdate();
+}
+function pvClick(e) {
+  const a = e.target.closest && e.target.closest('a'); if (!a) return;
+  e.preventDefault();
+  const h = a.getAttribute('href') || '';
+  if (h.startsWith('#')) $('#mdp').contentDocument.getElementById(decodeURIComponent(h.slice(1)))?.scrollIntoView();
+  else if (/^(https?|mailto):/.test(h)) sin.openExternal(h);
+  else if (active && active.path) { try { openPath(urlToPath(new URL(h, fileUrl(dirOf(active.path) + '/')))); } catch {} }
+}
+$('#mdp').onload = () => pvSoon();
+
+// ---------- boot ----------
+async function boot() {
+  extraLangs(); loadMarked();
+  for (const l of monaco.languages.getLanguages()) {
+    (l.extensions || []).forEach((e) => (extMap[e.toLowerCase()] ??= l.id));
+    (l.filenames || []).forEach((f) => (nameMap[f] = l.id));
+  }
+  // everforest dark, medium
+  monaco.editor.defineTheme('sin-forest', {
+    base: 'vs-dark', inherit: true,
+    rules: [
+      { token: 'comment', foreground: '7a8478', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'e67e80' },
+      { token: 'string', foreground: 'a7c080' },
+      { token: 'number', foreground: 'd699b9' },
+      { token: 'type', foreground: 'dbbc7f' },
+      { token: 'delimiter', foreground: '859289' },
+    ],
+    colors: {
+      'editor.background': '#2d353b', 'editor.foreground': '#d3c6aa',
+      'editorLineNumber.foreground': '#475258', 'editorLineNumber.activeForeground': '#a7c080',
+      'editor.lineHighlightBackground': '#343f44', 'editor.selectionBackground': '#543a48',
+      'editorCursor.foreground': '#a7c080', 'editorIndentGuide.background1': '#3d484d',
+      'editorWidget.background': '#343f44', 'minimap.background': '#2d353b',
+    },
+  });
+  eopts = {
+    theme: 'sin-forest', model: null, automaticLayout: true, fontSize: 14, fontLigatures: true,
+    fontFamily: "'Loomglyph','JetBrains Mono','Cascadia Code',Consolas,monospace",
+    smoothScrolling: true, cursorSmoothCaretAnimation: 'on', cursorBlinking: 'smooth',
+    bracketPairColorization: { enabled: true }, padding: { top: 10 }, minimap: { enabled: true },
+  };
+  editor = cur = monaco.editor.create($('#editor'), eopts);
+  editor.onDidChangeCursorPosition(onPos);
+  editor.onDidFocusEditorText(() => focusPane(editor));
+  editor.onDidScrollChange(pvSync);
+  applyS();
+
+  $('#acts').replaceChildren(...[
+    ['new file', 'ctrl+n', newFile], ['open file', 'ctrl+o', openFiles], ['open folder', 'ctrl+shift+o', openFolder],
+    ['command palette', 'ctrl+shift+p', palette], ['toggle sound', '♪', toggleSound],
+  ].map(([n, k, fn]) => {
+    const d = document.createElement('div');
+    d.className = 'act'; d.innerHTML = `<span>${n}</span><kbd>${k}</kbd>`; d.onclick = fn;
+    return d;
+  }));
+  drawRec(); render();
+  chime([261.6, 329.6, 392, 523.3]);
+}
+
+$('#r-files').onclick = toggleSide;
+$('#r-pal').onclick = () => palette();
+$('#r-snd').onclick = toggleSound;
+$('#r-find').onclick = search;
+$('#r-term').onclick = toggleTerm;
+$('#r-set').onclick = openSettings;
+$('#st-term').onclick = toggleTerm;
+$('#enc').onclick = encPicker;
+$('#eol').onclick = eolPicker;
+$('#mdbtn').onclick = togglePreview;
+$('#r-home').onclick = () => show(null);
+$('#s-open').onclick = openFolder;
+$('#lang').onclick = () => langPicker();
+$('#omni').onclick = () => (folder ? finder() : palette());
+if (/Mac/.test(navigator.platform)) document.body.classList.add('mac');
+let sbw = 0; try { sbw = +localStorage.getItem('sin.sbw'); } catch {}
+if (sbw) $('#app').style.setProperty('--sbw', sbw + 'px');
+$('#grip').onpointerdown = (e) => {
+  const g = e.target; g.setPointerCapture(e.pointerId);
+  g.onpointermove = (m) => {
+    const w = Math.max(160, Math.min(600, m.clientX - 44));
+    $('#app').style.setProperty('--sbw', w + 'px');
+    try { localStorage.setItem('sin.sbw', w); } catch {}
+  };
+  g.onpointerup = () => { g.onpointermove = g.onpointerup = null; };
+};
+
+addEventListener('keydown', (e) => {
+  if (e.target.closest?.('#term')) return; // let the shell have its keys
+  const c = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  const m = { o: () => (e.shiftKey ? openFolder() : openFiles()), s: () => save(e.shiftKey), n: newFile,
+    w: () => active && close(active), b: toggleSide, p: () => (e.shiftKey ? palette() : finder()), f: search, '\\': split, ',': openSettings, m: togglePreview };
+  if (c && m[k] && (!'fm'.includes(k) || e.shiftKey)) { e.preventDefault(); m[k](); }
+}, true);
+
+// ---------- hidden things ----------
+const KONAMI = 'ArrowUp,ArrowUp,ArrowDown,ArrowDown,ArrowLeft,ArrowRight,ArrowLeft,ArrowRight,b,a';
+let ki = [];
+addEventListener('keydown', (e) => { ki = [...ki, e.key].slice(-10); if (ki.join() === KONAMI) fox('loomer says: hi :3'); }, true);
+let clicks = 0;
+$('#art').onclick = () => { if (++clicks === 7) { clicks = 0; fox('you found the sine. it was always periodic.'); } };
+</script>
+</body>
+</html>

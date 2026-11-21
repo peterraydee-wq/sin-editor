@@ -1,0 +1,19 @@
+{
+  "name": "sin-editor",
+  "version": "0.1.1",
+  "description": "sin(editor)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "monaco-editor": "^0.52.0",
+    "@lydell/node-pty": "^1.2.0-beta.18",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "marked": "^18.2.1"
+  },
+  "devDependencies": {
+    "electron": "latest"
+  }
+}
